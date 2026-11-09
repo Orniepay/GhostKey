@@ -15,7 +15,7 @@ Ghost Key may be someone's only way to speak. Our users may have only one reliab
 
 ## The user stays in control
 5. **The user confirms before anything is spoken aloud or sent.** AI and autocorrect only suggest; the user decides.
-6. **The SOS alert is the only exception.** It sends right away, so its pattern must be hard to trigger by accident, and the app must clearly show that an alert was sent.
+6. **SOS also requires a confirm, and the confirm must be fast.** After the SOS pattern, the app shows a large "Send SOS alert?" prompt. A single press of any switch sends it; the undo pattern cancels it. The prompt never disappears on its own. The app must clearly show when an alert has been sent.
 7. **Never autocorrect or change "yes" or "no".**
 8. **Never change uncommon words, names, or medications** unless the user accepts a suggestion.
 9. **If the AI fails or is offline, the user can still communicate** with letters, word prediction, quick phrases, and speech.
