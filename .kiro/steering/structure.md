@@ -30,7 +30,6 @@ ghost-key/
 ├── LICENSE MIT
 └── README.md
 
-
 ## Where code goes
 - Anything that decides *what a press means* (dot or dash, which letter, undo, timing, autocorrect, prediction) goes in `src/core/`, never inside a React component.
 - React components only display things and pass user actions to `core/` or `services/`.
