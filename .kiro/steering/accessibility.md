@@ -34,4 +34,4 @@ Ghost Key may be someone's only way to speak. Our users may have only one reliab
 
 ## Words and tone
 18. **Plain, short words in all app text.**
-19. **Spooky but respectful.** The Halloween theme is for the telegraph coming back to life. Never make jokes about illness, death, or the people using the app. 
+19. **Spooky but respectful.** The Halloween theme is for the telegraph coming back to life. Never make jokes about illness, death, or the people using the app.
