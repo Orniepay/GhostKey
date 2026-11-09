@@ -5,7 +5,7 @@ inclusion: always
 # Project structure: Ghost Key
 
 ## Folder layout
-
+```
 ghost-key/
 ├── .kiro/ Kiro setup: steering, specs, hooks, and other Kiro settings
 ├── api/ Vercel serverless functions (backend), e.g. AI expansion and SOS alert
@@ -29,6 +29,7 @@ ghost-key/
 ├── .gitignore
 ├── LICENSE MIT
 └── README.md
+```
 
 ## Where code goes
 - Anything that decides *what a press means* (dot or dash, which letter, undo, timing, autocorrect, prediction) goes in `src/core/`, never inside a React component.
