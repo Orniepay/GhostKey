@@ -53,4 +53,5 @@ None of the special codes is used by a supported character. Never add a characte
 - Timing settings are saved in the browser (`localStorage`).
 
 ## Reference chart
-- The full chart (every supported character and every special code, drawn with pumpkins and ghosts) is always available on screen. Users never need to memorize Morse code.
+- The full chart (every supported character and every special code, drawn with pumpkins and ghosts, with a small dot or dash mark under each) is always available on screen. Users never need to memorize Morse code.
+- As the user presses, the chart highlights the characters whose code still starts with what has been pressed so far, and fades the rest. Example: after a dot, every character starting with a dot stays lit; after dot-dash, only A, R, W, L, P, J, 1, and period stay lit.
