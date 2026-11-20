@@ -38,6 +38,7 @@ Never use real client names, facility names, or patient details anywhere in the 
 11. "Presses saved" counter: shows how many presses a message took compared with plain Morse code
 12. Guided "Try it" start screen for first-time users and judges, showing which keys to press and an example to try
 13. A live website that judges can use with no login
+14. Telegraph tape: a strip showing the dots and dashes entered so far, with a divider between letters
 
 ## After the MVP works (in this order)
 1. Calibration as a short game ("tap the pumpkin 5 times, hold the ghost 5 times")

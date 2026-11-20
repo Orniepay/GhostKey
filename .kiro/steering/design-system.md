@@ -41,6 +41,12 @@ Person 3's icon colors: pumpkin #C2610A, #892402, #A23B04; mouth #BA5A33; outlin
 - Icons must stay clear at 24px (chart size) and at large sizes (the press button).
 - The ghost always keeps its dark outline so it stays visible on any background.
 
+## Telegraph tape
+- A strip near the top of the screen shows the dots and dashes entered so far, drawn as small pumpkins and ghosts, with a thin divider between letters.
+- In calm mode it shows plain `·` and `−` marks.
+- Screen readers read the decoded letters, not every pumpkin and ghost.
+- The tape sits on a solid `--panel` area, like all other content.
+
 ## Backgrounds (scenes)
 - Scenes are original art, coded as React components with SVG and CSS in `src/components/scenes/`. Never copy outside images, characters, or logos.
 - Each scene is built from separate layers (sky, moon, far silhouettes, middle, foreground), so any layer can be swapped for Person 3's art later.
