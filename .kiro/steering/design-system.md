@@ -35,11 +35,17 @@ Person 3's icon colors: pumpkin #C2610A, #892402, #A23B04; mouth #BA5A33; outlin
 | `--accent` | #1F5F5B | Focus outline and selected item (6.4:1) |
 
 ## Icons
-- Pumpkin = dot, ghost = dash. Every icon in the Morse chart shows a small `·` or `−` underneath.
-- Final icons are SVGs drawn by Person 3, stored in `src/assets/icons/`.
-- Each icon has two states: **off** (resting) and **lit** (just pressed). On the pumpkin, only the face glows (`--glow`), like a candle inside.
-- Icons must stay clear at 24px (chart size) and at large sizes (the press button).
 - Pumpkin = dot, ghost = dash. Every icon in the Morse chart shows a small dot or dash mark underneath.
+- Each icon is a hybrid SVG built as a React component, with two layers:
+  - **Body:** Person 3's textured art as a PNG placed inside the SVG (an `<image>` element). Never auto-trace or convert the body to vector shapes; that loses detail.
+  - **Face:** only the eyes and mouth, as vector shapes named `eye-left`, `eye-right`, and `mouth`, from Person 3's `pumpkin-face.svg` and `ghost-face.svg`. They sit on the same canvas size as the PNG so they line up exactly.
+- Asset files go in `src/assets/icons/`: `pumpkin-body.png`, `pumpkin-face.svg`, `ghost-body.png`, `ghost-face.svg`.
+- Lighting is done in code: **off** = face filled with a dark color; **lit** = face filled with `--glow` plus a soft glow around it, fading in and out (never flashing). The body may get a warm light filter when lit.
+- Never show a PNG larger than its real size allows: a 256 × 256 PNG is shown at most 128 pixels wide, so it stays sharp on high-resolution screens.
+- If the pumpkin's face can't be read at chart size, the chart uses the simple dot and dash marks instead.
+- Dot and dash marks are simple SVG shapes (a circle and a rounded bar) colored with CSS tokens. Calm mode uses only these marks.
+- Until Person 3's files arrive, use placeholder shapes marked `PLACEHOLDER(design):`.
+- The ghost always keeps its dark outline so it stays visible on any background.
 
 ## Telegraph tape
 - A strip near the top of the screen shows the dots and dashes entered so far, drawn as small pumpkins and ghosts, with a thin divider between letters.
