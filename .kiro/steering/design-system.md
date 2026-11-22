@@ -39,7 +39,7 @@ Person 3's icon colors: pumpkin #C2610A, #892402, #A23B04; mouth #BA5A33; outlin
 - Final icons are SVGs drawn by Person 3, stored in `src/assets/icons/`.
 - Each icon has two states: **off** (resting) and **lit** (just pressed). On the pumpkin, only the face glows (`--glow`), like a candle inside.
 - Icons must stay clear at 24px (chart size) and at large sizes (the press button).
-- The ghost always keeps its dark outline so it stays visible on any background.
+- Pumpkin = dot, ghost = dash. Every icon in the Morse chart shows a small dot or dash mark underneath.
 
 ## Telegraph tape
 - A strip near the top of the screen shows the dots and dashes entered so far, drawn as small pumpkins and ghosts, with a thin divider between letters.
