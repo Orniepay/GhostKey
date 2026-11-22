@@ -26,5 +26,4 @@ How we used Kiro while building Ghost Key for Kiroween 2026. Newest entries at t
 - **Kiro feature:** Steering
 - **What we did:** Added `design-system.md` (fileMatch on `.tsx` and `.css`): colors as CSS variables with checked contrast, Halloween and calm modes, layered coded scenes, and a `PLACEHOLDER(design):` comment convention so we can find every spot that still needs custom art.
 - **What worked / what didn't:** Dropped a submission-checklist steering file, because steering should guide how Kiro writes code, not hold our to-do list.
-
 - **Screenshot:** `docs/screenshots/2026-11-20-steering-panel.png`, `docs/screenshots/2026-11-20-steering-filematch.png`, `docs/screenshots/2026-11-20-steering-auto.png`
