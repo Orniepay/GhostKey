@@ -40,6 +40,7 @@ inclusion: always
 - Vitest is the test runner (it works with Vite).
 - fast-check for property-based tests (tests that try hundreds of random inputs to prove a rule always holds).
 - React Testing Library with jsdom for UI tests.
+- Tests are required, not optional. Every change to `src/core/` must include unit tests and property-based tests that follow `.kiro/steering/testing-standards.md`, written in the same task as the code.
 
 ## Code rules
 - Core Morse logic (decoding, timing, autocorrect, undo) must be pure TypeScript functions with no UI or browser code inside, so it can be tested and works offline.
