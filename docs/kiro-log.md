@@ -25,5 +25,5 @@ How we used Kiro while building Ghost Key for Kiroween 2026. Newest entries at t
 ## 2026-11-18 to 2026-11-20: Finishing steering
 - **Kiro feature:** Steering
 - **What we did:** Added `design-system.md` (fileMatch on `.tsx` and `.css`): colors as CSS variables with checked contrast, Halloween and calm modes, layered coded scenes, and a `PLACEHOLDER(design):` comment convention so we can find every spot that still needs custom art.
-- **What worked / what didn't:** Dropped a submission-checklist steering file, because steering should guide how Kiro writes code, not hold our to-do list.
+- **What worked / what didn't:** Kiro loaded exactly our four "always" files (accessibility, product, structure, tech). It did not load the fileMatch files, and it knew ai-expansion existed but didn't load it, so the auto mode worked as designed. The test also exposed a gap: Kiro said it would not add tests unless asked, because testing-standards.md only loads for test files. We fixed it by adding an always-loaded rule to tech.md that makes tests required for all core logic.
 - **Screenshot:** `docs/screenshots/2026-11-20-steering-panel.png`, `docs/screenshots/2026-11-20-steering-filematch.png`, `docs/screenshots/2026-11-20-steering-auto.png`
