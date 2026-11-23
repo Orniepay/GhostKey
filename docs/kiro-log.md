@@ -48,3 +48,10 @@ How we used Kiro while building Ghost Key for Kiroween 2026. Newest entries at t
 - **What worked / what didn't:** Our review found 3 issues. (1) The character type was a plain string, so a wrong character would only be caught by tests; we asked for a strict type built from one list, so mistakes fail while coding. (2) The "no browser code" scan could fail on words in comments; it now strips comments, matches whole words, and checks itself. (3) The build could not type-check test files that read files with Node; Kiro added a separate TypeScript config for tests instead of weakening strict mode, and noticed our app config never stated strict mode explicitly.
 - **Credits used:** 4.29 (design) + 6.69 (changes)
 - **Screenshot:** `docs/screenshots/2026-11-22-design-properties.png`
+
+## 2026-11-23: morse-core spec, running the tasks
+- **Kiro feature:** Spec task execution (Run All Tasks with parallel waves), sub-agents, property-based testing, Autopilot
+- **What we did:** Ran all 53 required tasks with Run All Tasks. Kiro grouped independent tasks into parallel waves and ran each task in its own sub-agent. It wrote seven pure TypeScript modules in src/core/morse/, a separate TypeScript config so the build type-checks tests, and 111 tests: unit tests, a purity test, and 20 property-based tests covering all 18 design properties, each with at least 100 runs. All four checkpoints passed, and the final check ran npm test, npm run lint, and npm run build.
+- **What worked / what didn't:** No test failed during the run, and no property test found a bug in this module. We credit that to reviewing and fixing the requirements and design before any code was written. Kiro's final check confirmed each property test exists, is tagged, and runs 100+ times, but said it did not compare each test's assertions with its property, so we ran a separate check for that.
+- **Credits used:** 51.14 (about 1 hour 11 minutes)
+- **Screenshot:** `docs/screenshots/2026-11-23-tests-passing.png`, `docs/screenshots/2026-11-23-design-properties-implemented.png`
