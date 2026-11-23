@@ -123,12 +123,15 @@ describe('matchingCharacters non-dot-dash property', () => {
   // Feature: morse-core, Property 8: Prefixes with other characters match nothing
   // Validates: Requirements 5.6
   it('returns an empty list without throwing when the prefix has another character', () => {
-    const otherChar = fc.string({ minLength: 1, maxLength: 1 }).filter((c) => c !== '.' && c !== '-');
+    const otherChar = fc.oneof(
+      fc.string({ unit: 'binary', minLength: 1, maxLength: 1 }).filter((c) => c !== '.' && c !== '-'),
+      fc.constantFrom('😀', '\u0000', 'é', '\n', '\u{1F47B}', '\u200B'),
+    );
     const prefixWithOther = fc
       .tuple(dotDashString, otherChar, dotDashString)
       .map(([before, other, after]) => before + other + after);
     const anyStringWithOther = fc
-      .string({ maxLength: 20 })
+      .string({ unit: 'binary', maxLength: 20 })
       .filter((s) => [...s].some((c) => c !== '.' && c !== '-'));
 
     fc.assert(

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { decodePattern } from './morse-decoder';
 import { encodeCharacter } from './morse-encoder';
 import { MORSE_CHARACTERS, MORSE_TABLE } from './morse-table';
-import { anyString, lowercaseLetter, supportedCharacter } from './morse-test-arbitraries';
+import { lowercaseLetter, supportedCharacter } from './morse-test-arbitraries';
 
 describe('encodeCharacter', () => {
   it('encodes "a" and "A" to ".-"', () => {
@@ -11,7 +11,7 @@ describe('encodeCharacter', () => {
     expect(encodeCharacter('A')).toEqual({ kind: 'found', pattern: '.-' });
   });
 
-  it.each(['', 'AB', ' ', '!', 'é', 'ß', 'ı', '😀'])(
+  it.each(['', 'AB', ' ', '!', 'é', 'ß', 'ı', 'ſ', '😀'])(
     'returns not-found with no pattern for %j',
     (input) => {
       const result = encodeCharacter(input);
@@ -70,8 +70,16 @@ describe('encoder totality', () => {
   it('never throws, and rejects anything that is not exactly one supported character', () => {
     const supported = new Set<string>(MORSE_CHARACTERS);
     const before = JSON.stringify([...MORSE_TABLE.entries()]);
+    // Every input is 0 to 100 characters long.
+    const input = fc.oneof(
+      fc.string({ unit: 'binary', maxLength: 100 }),
+      fc.array(fc.constantFrom('.', '-'), { maxLength: 100 }).map((a) => a.join('')),
+      supportedCharacter,
+      lowercaseLetter,
+      fc.constantFrom('ı', 'ſ', 'ß', 'é', '😀'),
+    );
     fc.assert(
-      fc.property(anyString, (s) => {
+      fc.property(input, (s) => {
         const result = encodeCharacter(s);
         expect(['found', 'not-found']).toContain(result.kind);
         const upper = /^[a-z]$/.test(s) ? s.toUpperCase() : s;

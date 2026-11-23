@@ -55,3 +55,9 @@ How we used Kiro while building Ghost Key for Kiroween 2026. Newest entries at t
 - **What worked / what didn't:** No test failed during the run, and no property test found a bug in this module. We credit that to reviewing and fixing the requirements and design before any code was written. Kiro's final check confirmed each property test exists, is tagged, and runs 100+ times, but said it did not compare each test's assertions with its property, so we ran a separate check for that.
 - **Credits used:** 51.14 (about 1 hour 11 minutes)
 - **Screenshot:** `docs/screenshots/2026-11-23-tests-passing.png`, `docs/screenshots/2026-11-23-design-properties-implemented.png`
+
+## 2026-11-23: Checking property tests against their properties
+- **Kiro feature:** #spec context in chat, property-based testing
+- **What we did:** Started a new session with #spec:morse-core and asked Kiro to compare each of the 18 property tests with its property in design.md, without changing files. Then had it fix the gaps, changing only test files.
+- **What worked / what didn't:** 14 tests matched. 4 differed, even though all passed: Property 8 only generated printable ASCII, so it tested less than it claimed; Property 4 never guaranteed its random inputs hit real Morse patterns; Property 5 ran outside its stated 0 to 100 range and rarely tried tricky letters like "ı" and "ſ"; Property 7 had one redundant check. We fixed the first three and left the fourth. The stronger tests still passed, so no source bug was found. Lesson: a passing property test is only as good as its input generator. A spec session only runs work through tasks, so Kiro reopened the final checkpoint task to run this fix; small fixes outside the task list fit better in a regular chat.
+- **Credits used:** 1.74 (review) + 4.03 (fixes)

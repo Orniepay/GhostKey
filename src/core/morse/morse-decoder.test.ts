@@ -146,10 +146,18 @@ describe('decodePattern: result kind and determinism property', () => {
     const morseBefore = JSON.stringify([...MORSE_TABLE]);
     const specialBefore = JSON.stringify([...SPECIAL_CODE_TABLE]);
 
+    const input = fc.oneof(
+      fc.constantFrom(...MORSE_TABLE.values()),
+      fc.constantFrom(...SPECIAL_CODE_TABLE.values()),
+      anyString,
+    );
+    const seen = { character: 0, action: 0, invalid: 0 };
+
     fc.assert(
-      fc.property(anyString, (s) => {
+      fc.property(input, (s) => {
         const first = decodePattern(s);
         const second = decodePattern(s);
+        seen[first.kind] += 1;
 
         expect(second).toEqual(first);
         expect(first.kind === 'character').toBe(tablePatterns.has(s));
@@ -161,5 +169,9 @@ describe('decodePattern: result kind and determinism property', () => {
       }),
       { numRuns: 200 },
     );
+
+    expect(seen.character).toBeGreaterThan(0);
+    expect(seen.action).toBeGreaterThan(0);
+    expect(seen.invalid).toBeGreaterThan(0);
   });
 });
