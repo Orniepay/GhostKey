@@ -1,4 +1,4 @@
-# Requirements Document
+﻿# Requirements Document
 
 ## Introduction
 
@@ -7,6 +7,14 @@ Switch input turns raw switch events (press starts, press ends, and time passing
 All logic lives in `src/core/morse/` as pure TypeScript. It contains no React, no browser code, and no clock or timers. The caller passes every timestamp in milliseconds. State goes in and new state out, in the same style as `message-editor.ts`. Nothing is changed in place.
 
 Every mode uses the same press model. A switch has a press start event and a press end event. A press counts only when it ends and its duration is at least the Minimum_Press. In 1-switch mode the duration also decides dot or dash. In 2-switch and 3-switch modes each switch adds its own symbol, once per counted press, when the press ends. A physical keyboard key that is held down repeats its key-down event, so a press start for a switch that is already held is ignored. Holding a key therefore adds one symbol, not many.
+
+Adaptive timing decisions:
+- After a successful calibration, the Dash_Limit may drift only inside the Drift_Band around the Calibrated_Dash_Limit, so that tiredness is followed slowly and a run of odd presses cannot pull the limit far from the calibration.
+- The Dash_Limit is always a whole number of milliseconds and is always at least 2 times the Minimum_Press, so that a dot stays possible.
+- The Letter_Gap does not adapt in this spec. Only a new calibration updates the Letter_Gap.
+- The Recent_Presses have no age limit. They are kept across mode changes, which matches Requirement 9 criterion 8.
+- A very long press is still a dash, but it is not used to adapt the timing.
+- When the Dash_Limit reaches an edge of the Drift_Band, the Input_Output carries a flag that suggests recalibration. The flag changes no state and does not stop input.
 
 This spec follows `.kiro/steering/morse-rules.md`, `accessibility.md`, and `testing-standards.md`. Accessibility rules 2 and 3 apply directly: timing limits are adjustable and adapt to the user, and nothing is lost or auto-sent because the user was slow.
 
@@ -25,13 +33,13 @@ Assumptions:
 
 - **Switch_Input**: The pure TypeScript module in `src/core/morse/` that implements the requirements in this document.
 - **Switch_Id**: The name of one switch. The names are `main` (the only switch in 1-switch mode), `dot` and `dash` (2-switch and 3-switch modes), and `next` (3-switch mode only).
-- **Input_State**: The immutable value that holds the current mode, the Timing_Settings, the Pending_Pattern, the Held_Switches, the Last_Counted_Release, the Recent_Presses, and the Calibrated_Flag.
+- **Input_State**: The immutable value that holds the current mode, the Timing_Settings, the Pending_Pattern, the Held_Switches, the Last_Counted_Release, the Recent_Presses, the Calibrated_Flag, and the Calibrated_Dash_Limit.
 - **Input_Event**: One of four events passed to a transition: a press start (with a Switch_Id and a timestamp), a press end (with a Switch_Id and a timestamp), a time-passed event (with a timestamp), or a mode change (with the new mode).
-- **Input_Output**: The value returned by every Switch_Input transition. It holds the new Input_State and the Finished_Pattern, which is `null` when no letter ended.
+- **Input_Output**: The value returned by every Switch_Input transition. It holds the new Input_State, the Finished_Pattern (which is `null` when no letter ended), and the Recalibration_Flag.
 - **Timing_Settings**: The three adjustable values: Dash_Limit, Letter_Gap, and Minimum_Press.
-- **Dash_Limit**: The press length in milliseconds at which a press becomes a dash in 1-switch mode. Default 400. Range 150 to 3000.
+- **Dash_Limit**: The press length in milliseconds at which a press becomes a dash in 1-switch mode. Always a whole number of milliseconds and always at least 2 times the Minimum_Press. Default 400. Range 150 to 3000.
 - **Letter_Gap**: The pause in milliseconds after the Last_Counted_Release that ends a letter in 1-switch and 2-switch modes. Default 1500. Range 500 to 10000.
-- **Minimum_Press**: The shortest press length in milliseconds that counts as a press, in every mode. Default 30. Range 0 to 200.
+- **Minimum_Press**: The shortest press length in milliseconds that counts as a press, in every mode. Always at most half of the Dash_Limit. Default 30. Range 0 to 200.
 - **Pending_Pattern**: The string of `.` and `-` characters entered so far for the letter that has not ended.
 - **Finished_Pattern**: The Pending_Pattern at the moment a letter ends, given to `decodePattern`.
 - **Held_Switches**: The switches that are currently held down, each stored with its own Press_Start. A switch appears at most once.
@@ -43,10 +51,14 @@ Assumptions:
 - **Hold_Progress**: A number from 0 to 1 that shows how far a held press is toward the Dash_Limit.
 - **Tap**: A Counted_Press classified as a dot in 1-switch mode.
 - **Hold**: A Counted_Press classified as a dash in 1-switch mode.
-- **Recent_Presses**: The durations of the last 10 Taps and the last 10 Holds that were classified.
-- **Calibration_Samples**: The measured Tap durations, Hold durations, and pauses between presses, all in milliseconds, supplied by the caller.
+- **Recent_Presses**: Two windows of durations in milliseconds, oldest first: the Taps window and the Holds window. Each window holds at most 10 entries. Recent_Presses have no age limit.
+- **Outlier_Press**: A Counted_Press in 1-switch mode whose raw duration is greater than 3 times the Dash_Limit from before the adaptive move. An Outlier_Press is still a Hold.
+- **Calibration_Samples**: The measured Tap durations, Hold durations, and pauses between presses, all in milliseconds, supplied by the caller. The caller supplies each list in time order, oldest first. "Most recent" means the last entries of a list.
 - **Median**: The middle value of a sorted list. For an even count, the mean of the two middle values.
 - **Calibrated_Flag**: A boolean in Input_State that is true after one successful calibration.
+- **Calibrated_Dash_Limit**: The Dash_Limit value set by the most recent successful calibration, stored in Input_State. It has no value until the first successful calibration.
+- **Drift_Band**: The range in which the Dash_Limit may lie after a calibration. It has three lower bounds and two upper bounds. The lower bounds are 75 percent of the Calibrated_Dash_Limit (rounded to the nearest whole millisecond, with .5 rounded up), 150 ms, and 2 times the Minimum_Press. The upper bounds are 150 percent of the Calibrated_Dash_Limit (rounded the same way) and 3000 ms. The effective lower bound is the largest of the lower bounds. The effective upper bound is the smallest of the upper bounds. If the effective lower bound is greater than the effective upper bound, the Drift_Band is the single value of the effective upper bound (the upper bound wins). The Drift_Band does not exist while the Calibrated_Flag is false.
+- **Recalibration_Flag**: A boolean in Input_Output. It is true when the Dash_Limit equals the effective lower bound or the effective upper bound of the Drift_Band after a successful calibration or after a Counted_Press in 1-switch mode while the Calibrated_Flag is true. Otherwise it is false.
 - **Purity_Test**: The existing test file `src/core/morse/morse-purity.test.ts`, which scans source files in `src/core/morse/` for forbidden references.
 
 ## Requirements
@@ -58,9 +70,9 @@ Assumptions:
 #### Acceptance Criteria
 
 1. THE Switch_Input SHALL provide default Timing_Settings with a Dash_Limit of 400 ms, a Letter_Gap of 1500 ms, and a Minimum_Press of 30 ms.
-2. WHEN a finite numeric Timing_Settings value is supplied, THE Switch_Input SHALL clamp the Dash_Limit into the range 150 to 3000 ms inclusive, the Letter_Gap into the range 500 to 10000 ms inclusive, and the Minimum_Press into the range 0 to 200 ms inclusive. A value below the range minimum SHALL become the minimum, and a value above the range maximum SHALL become the maximum.
+2. WHEN a finite numeric Timing_Settings value is supplied, THE Switch_Input SHALL clamp the values in this order: first the Dash_Limit into the range 150 to 3000 ms inclusive and rounded to the nearest whole millisecond (.5 rounded up), then the Letter_Gap into the range 500 to 10000 ms inclusive, then the Minimum_Press into the range 0 to 200 ms inclusive and to at most half of the resulting Dash_Limit. A value below the range minimum SHALL become the minimum, and a value above the range maximum SHALL become the maximum.
 3. IF a supplied Timing_Settings value is NaN, Infinity, -Infinity, or not a number type, THEN THE Switch_Input SHALL use the default for that value (400 ms, 1500 ms, or 30 ms) and SHALL NOT throw an error.
-4. WHEN a Timing_Settings value is already inside its range (inclusive of both bounds), THE Switch_Input SHALL return that value unchanged.
+4. WHEN a Timing_Settings value is already inside its range (inclusive of both bounds), is a whole number if it is the Dash_Limit, and, if it is the Minimum_Press, is at most half of the resulting Dash_Limit, THE Switch_Input SHALL return that value unchanged.
 5. FOR ALL numeric inputs, clamping a Timing_Settings value twice SHALL produce the same result as clamping once (idempotence).
 6. WHEN a Timing_Settings object is supplied with some values missing, THE Switch_Input SHALL use the default for each missing value and SHALL clamp the values that are present, so that the returned Timing_Settings always has all three values.
 
@@ -160,17 +172,20 @@ Assumptions:
 
 #### Acceptance Criteria
 
-1. WHEN Calibration_Samples contain at least 5 Tap durations, at least 5 Hold durations, and at least 1 pause, all values are finite numbers of 0 ms or more, and the Median Tap is shorter than the Median Hold, THE Switch_Input SHALL set the Dash_Limit to the value halfway between the Median Tap and the Median Hold, rounded to the nearest whole millisecond. The Median of an odd number of values is the middle value in sorted order. The Median of an even number of values is the mean of the two middle values in sorted order.
-2. WHEN the conditions in criterion 1 are met, THE Switch_Input SHALL set the Letter_Gap to 3 times the Median pause, rounded to the nearest whole millisecond.
-3. WHEN calibration succeeds, THE Switch_Input SHALL clamp the new Dash_Limit and the new Letter_Gap into their ranges from Requirement 1, after the calculations in criteria 1 and 2 and before storing them.
-4. WHEN calibration succeeds, THE Switch_Input SHALL leave the Minimum_Press unchanged and set the Calibrated_Flag to true.
-5. WHEN calibration succeeds, THE Switch_Input SHALL clear the Recent_Presses (both the Taps and the Holds), so that adaptive timing starts from the new calibration and old presses do not pull the new Dash_Limit back. Under Requirement 8 criterion 3, the Dash_Limit then stays unchanged until at least one new Tap and one new Hold have been classified.
-6. IF the Median Tap is not shorter than the Median Hold, THEN THE Switch_Input SHALL return a calibration failed result, keep the old Timing_Settings, keep the old Calibrated_Flag, and keep the old Recent_Presses.
-7. IF Calibration_Samples contain fewer than 5 Tap durations, fewer than 5 Hold durations, or no pauses, THEN THE Switch_Input SHALL return a calibration failed result, keep the old Timing_Settings, keep the old Calibrated_Flag, and keep the old Recent_Presses.
-8. IF any Calibration_Samples value is negative, NaN, or not a finite number, THEN THE Switch_Input SHALL return a calibration failed result, keep the old Timing_Settings, keep the old Calibrated_Flag, and keep the old Recent_Presses, even when the other samples are valid.
-9. WHEN calibration succeeds, THE Switch_Input SHALL produce Timing_Settings in which every value is inside its range from Requirement 1.
-10. WHEN calibration runs on two sets of Calibration_Samples that contain the same values in a different order, THE Switch_Input SHALL produce identical Timing_Settings and the same success or failure result for both.
-11. WHEN calibration succeeds, THE Switch_Input SHALL keep the Pending_Pattern, the Held_Switches, and the Last_Counted_Release unchanged.
+1. WHEN Calibration_Samples contain at least 5 Tap durations, at least 5 Hold durations, and at least 1 pause, all values are finite numbers of 0 ms or more, the Median Tap is shorter than the Median Hold, and no switch is held, THE Switch_Input SHALL set the Dash_Limit to the value halfway between the Median Tap and the Median Hold, rounded to the nearest whole millisecond (.5 rounded up). The Median of an odd number of values is the middle value in sorted order. The Median of an even number of values is the mean of the two middle values in sorted order. The Medians use all supplied samples.
+2. WHEN the conditions in criterion 1 are met, THE Switch_Input SHALL set the Letter_Gap to 3 times the Median pause, rounded to the nearest whole millisecond (.5 rounded up).
+3. WHEN calibration succeeds, THE Switch_Input SHALL clamp the new Dash_Limit into 150 to 3000 ms and the new Letter_Gap into 500 to 10000 ms (Requirement 1), then SHALL raise the new Dash_Limit to 2 times the Minimum_Press when the clamped value is lower, before storing them.
+4. WHEN calibration succeeds, THE Switch_Input SHALL leave the Minimum_Press unchanged, set the Calibrated_Flag to true, and store the final new Dash_Limit as the Calibrated_Dash_Limit.
+5. WHEN calibration succeeds, THE Switch_Input SHALL replace the Recent_Presses with the calibration's own samples: for the Taps window and the Holds window separately, THE Switch_Input SHALL first remove every sample that is greater than 3 times the new Dash_Limit (the Outlier_Press rule of Requirement 8 criterion 2), and then SHALL keep the 10 most recent remaining samples, where the most recent samples are the last entries of the supplied list, oldest first. A window with fewer than 10 remaining samples keeps all of them, and the old Recent_Presses are discarded.
+6. IF the Median Tap is not shorter than the Median Hold, THEN THE Switch_Input SHALL return a calibration failed result, keep the old Timing_Settings, keep the old Calibrated_Flag, keep the old Calibrated_Dash_Limit, and keep the old Recent_Presses.
+7. IF Calibration_Samples contain fewer than 5 Tap durations, fewer than 5 Hold durations, or no pauses, THEN THE Switch_Input SHALL return a calibration failed result, keep the old Timing_Settings, keep the old Calibrated_Flag, keep the old Calibrated_Dash_Limit, and keep the old Recent_Presses.
+8. IF any Calibration_Samples value is negative, NaN, or not a finite number, THEN THE Switch_Input SHALL return a calibration failed result, keep the old Timing_Settings, keep the old Calibrated_Flag, keep the old Calibrated_Dash_Limit, and keep the old Recent_Presses, even when the other samples are valid.
+9. IF calibration is requested while any switch is held, THEN THE Switch_Input SHALL return a calibration failed result, keep the old Timing_Settings, keep the old Calibrated_Flag, keep the old Calibrated_Dash_Limit, keep the old Recent_Presses, and keep the Held_Switches, whatever the Calibration_Samples are.
+10. WHEN calibration succeeds, THE Switch_Input SHALL produce Timing_Settings in which every value is inside its range from Requirement 1, the Dash_Limit is a whole number of milliseconds, and the Dash_Limit is at least 2 times the Minimum_Press.
+11. WHEN calibration runs on two sets of Calibration_Samples that contain the same values in a different order, THE Switch_Input SHALL produce identical Timing_Settings, an identical Calibrated_Dash_Limit, and the same success or failure result for both. This order independence does not apply to the seeded Recent_Presses, because criterion 5 depends on the order of the samples.
+12. WHEN calibration succeeds, THE Switch_Input SHALL keep the Pending_Pattern, the Held_Switches (which are empty under criterion 1), and the Last_Counted_Release unchanged.
+13. WHEN calibration succeeds, THE Switch_Input SHALL return the Recalibration_Flag as true if the new Dash_Limit equals the effective lower bound or the effective upper bound of the new Drift_Band, and as false otherwise.
+14. FOR ALL successful calibrations, each seeded window SHALL hold at most 10 entries, SHALL hold no sample greater than 3 times the new Dash_Limit, and SHALL equal the last entries, in supplied order, of the supplied samples that remain after outlier removal.
 
 ### Requirement 8: Adaptive timing
 
@@ -178,18 +193,23 @@ Assumptions:
 
 #### Acceptance Criteria
 
-1. WHILE the Calibrated_Flag is true and the mode is 1-switch, WHEN a press is classified as a dot or a dash, THE Switch_Input SHALL add its duration to the Recent_Presses (a dot to the Taps, a dash to the Holds) and keep only the 10 most recent Taps and the 10 most recent Holds, discarding the oldest first.
-2. WHILE the Calibrated_Flag is true and the mode is 1-switch, WHEN a press is classified and the Recent_Presses contain at least one Tap and at least one Hold, THE Switch_Input SHALL move the Dash_Limit toward the midpoint of the Median recent Tap and the Median recent Hold, where the midpoint is (Median recent Tap + Median recent Hold) / 2 in milliseconds.
-3. WHILE the Calibrated_Flag is true and the mode is 1-switch, WHEN a press is classified and the Recent_Presses do not contain at least one Tap and at least one Hold, THE Switch_Input SHALL leave the Dash_Limit unchanged.
-4. THE Switch_Input SHALL limit each adaptive move of the Dash_Limit to at most 5 percent of the Dash_Limit before the move, and SHALL move the Dash_Limit by the full distance to the midpoint when that distance is within 5 percent.
-5. THE Switch_Input SHALL keep the Dash_Limit inside the range 150 to 3000 ms, inclusive, after every adaptive move.
-6. WHEN the Dash_Limit already equals the midpoint, THE Switch_Input SHALL leave the Dash_Limit unchanged.
-7. WHILE the Calibrated_Flag is false, THE Switch_Input SHALL leave the Timing_Settings and the Recent_Presses unchanged when a press is classified.
-8. WHEN a press is an Ignored_Press, THE Switch_Input SHALL leave the Recent_Presses and the Timing_Settings unchanged.
-9. WHEN a press is classified, THE Switch_Input SHALL classify it using the Dash_Limit from before the adaptive move.
-10. THE Switch_Input SHALL leave the Letter_Gap and the Minimum_Press unchanged during adaptive moves.
-11. WHILE the mode is 2-switch or 3-switch, THE Switch_Input SHALL leave the Timing_Settings and the Recent_Presses unchanged on every press start, press end, and time-passed event.
-12. FOR ALL sequences of classified presses, the Dash_Limit SHALL stay inside the range 150 to 3000 ms and each single step SHALL change it by at most 5 percent of its value before that step.
+1. WHILE the Calibrated_Flag is true and the mode is 1-switch, WHEN a Counted_Press ends, THE Switch_Input SHALL work in this order: first classify the press as a dot or a dash using the Dash_Limit from before any adaptive move, then update the Recent_Presses, then move the Dash_Limit.
+2. WHILE the Calibrated_Flag is true and the mode is 1-switch, WHEN a Counted_Press is classified, THE Switch_Input SHALL add its duration to the Taps window (a dot) or the Holds window (a dash) and SHALL keep only the 10 most recent entries in each window, discarding the oldest first. IF the press is an Outlier_Press, THEN THE Switch_Input SHALL still classify it as a dash and append `-`, SHALL NOT add its duration to the Recent_Presses, and SHALL leave the Dash_Limit unchanged.
+3. WHILE the Calibrated_Flag is true and the mode is 1-switch, WHEN a press is classified and the Recent_Presses contain fewer than 3 Taps or fewer than 3 Holds, THE Switch_Input SHALL leave the Dash_Limit unchanged.
+4. IF the Median recent Tap is not shorter than the Median recent Hold, THEN THE Switch_Input SHALL leave the Dash_Limit unchanged.
+5. WHEN the Recent_Presses contain at least 3 Taps and at least 3 Holds, the press is not an Outlier_Press, and the Median recent Tap is shorter than the Median recent Hold, THE Switch_Input SHALL compute the midpoint as (Median recent Tap + Median recent Hold) / 2 in milliseconds, and SHALL turn it into a whole-millisecond target as follows: if the midpoint is greater than the Dash_Limit, the target is the midpoint rounded down; if the midpoint is less than the Dash_Limit, the target is the midpoint rounded up; if the midpoint equals the Dash_Limit, there is no move. THE Switch_Input SHALL then clamp the target into the Drift_Band, so that the target never passes the midpoint.
+6. WHEN a target is computed under criterion 5, THE Switch_Input SHALL move the Dash_Limit toward the target by the smaller of two amounts: the distance to the target, and 5 percent of the Dash_Limit before the move rounded down to a whole millisecond. The move therefore never exceeds 5 percent of the Dash_Limit before the move, never passes the target, never passes the midpoint, leaves the Dash_Limit a whole number of milliseconds, and is at least 1 ms whenever the distance to the target is 1 ms or more. When the distance to the target is 0 ms, the Dash_Limit stays unchanged.
+7. THE Switch_Input SHALL keep the Dash_Limit inside the Drift_Band after every adaptive move that starts with the Dash_Limit inside the Drift_Band. IF a settings change has left the Dash_Limit outside the Drift_Band, THEN THE Switch_Input SHALL still move it toward the clamped target under criterion 6.
+8. THE Switch_Input SHALL keep the Dash_Limit at least 2 times the Minimum_Press and inside 150 to 3000 ms after every adaptive move, because the Drift_Band includes both limits.
+9. WHEN a Counted_Press ends in 1-switch mode while the Calibrated_Flag is true, THE Switch_Input SHALL return the Recalibration_Flag as true if the Dash_Limit after the press equals the effective lower bound or the effective upper bound of the Drift_Band, and as false otherwise. The Recalibration_Flag changes no state and does not stop input.
+10. WHILE the Calibrated_Flag is false, THE Switch_Input SHALL leave the Timing_Settings and the Recent_Presses unchanged when a press is classified.
+11. WHEN a press is an Ignored_Press, THE Switch_Input SHALL leave the Recent_Presses and the Timing_Settings unchanged.
+12. THE Switch_Input SHALL leave the Letter_Gap, the Minimum_Press, and the Calibrated_Dash_Limit unchanged during adaptive moves.
+13. WHILE the mode is 2-switch or 3-switch, THE Switch_Input SHALL leave the Timing_Settings, the Recent_Presses, and the Calibrated_Dash_Limit unchanged on every press start, press end, and time-passed event.
+14. FOR ALL sequences of classified presses that start from a calibrated state with the Dash_Limit inside the Drift_Band, each single step SHALL change the Dash_Limit by at most 5 percent of its value before that step, SHALL NOT move the Dash_Limit away from the midpoint, and SHALL NOT move the Dash_Limit past the midpoint.
+15. FOR ALL sequences of classified presses that start from a calibrated state with the Dash_Limit inside the Drift_Band, THE Dash_Limit SHALL stay inside the Drift_Band and SHALL stay at least 2 times the Minimum_Press after every step.
+16. FOR ALL sequences in which the same Tap duration and the same Hold duration (the Tap shorter than the Hold, neither an Outlier_Press) are repeated, and every Tap is classified as a dot and every Hold as a dash at every step, THE Dash_Limit SHALL reach the clamped whole-millisecond target of criterion 5 after a finite number of presses and SHALL stay there.
+17. FOR ALL sequences of classified presses, THE Taps window and the Holds window SHALL each hold at most 10 entries after every step.
 
 ### Requirement 9: Immutable state transitions
 
@@ -197,17 +217,18 @@ Assumptions:
 
 #### Acceptance Criteria
 
-1. THE Switch_Input SHALL expose each transition as a function that takes exactly one Input_State and one Input_Event and returns exactly one Input_Output, which contains the next Input_State and an optional Finished_Pattern.
+1. THE Switch_Input SHALL expose each transition as a function that takes exactly one Input_State and one Input_Event and returns exactly one Input_Output, which contains the next Input_State, an optional Finished_Pattern, and the Recalibration_Flag.
 2. THE Switch_Input SHALL declare every field of Input_State, Input_Event, and Input_Output as `readonly`, including fields of nested objects and arrays, so that assigning to any field is a TypeScript compile error under strict mode.
 3. WHEN a transition runs, THE Switch_Input SHALL leave the passed-in Input_State deeply equal to a copy taken before the call, and SHALL return a next Input_State that is not the same object reference when any field changed.
-4. THE Switch_Input SHALL provide one initial Input_State for each of the three modes (1-switch, 2-switch, 3-switch), each with the default Timing_Settings, a Calibrated_Flag of false, an empty Pending_Pattern (length 0), no Held_Switches, and no Last_Counted_Release.
+4. THE Switch_Input SHALL provide one initial Input_State for each of the three modes (1-switch, 2-switch, 3-switch), each with the default Timing_Settings, a Calibrated_Flag of false, no Calibrated_Dash_Limit, empty Recent_Presses, an empty Pending_Pattern (length 0), no Held_Switches, and no Last_Counted_Release.
 5. THE Switch_Input SHALL receive every timestamp as a parameter in milliseconds and SHALL use no clock, timer, or random source.
 6. THE Switch_Input SHALL contain no import from React, no reference to `window`, `document`, `localStorage`, or `fetch`, and no reference to `Date`, `performance`, `Math.random`, `setTimeout`, or `setInterval`, and the Purity_Test, extended under Requirement 10 criterion 4, SHALL enforce this for every non-test source file in `src/core/morse/`.
 7. WHEN the same Input_State and the same Input_Event are supplied twice, THE Switch_Input SHALL return deeply equal Input_Output values.
-8. WHEN a mode change event is received, THE Switch_Input SHALL keep the Timing_Settings, the Calibrated_Flag, and the Recent_Presses unchanged, SHALL set the Pending_Pattern to length 0, SHALL drop all Held_Switches, SHALL clear the Last_Counted_Release, and SHALL return no Finished_Pattern.
-9. IF an Input_Event names a Switch_Id that does not belong to the current mode (`main` outside 1-switch mode, `dot` or `dash` in 1-switch mode, or `next` outside 3-switch mode), THEN THE Switch_Input SHALL return an Input_State deeply equal to the one passed in, with no Finished_Pattern.
-10. IF a press start, press end, or time-passed event carries a timestamp that is not a finite number or is negative, THEN THE Switch_Input SHALL return an Input_State deeply equal to the one passed in, with no Finished_Pattern, and SHALL NOT throw an error. A timestamp that is finite but earlier than a stored time is handled by Requirement 2 criteria 10 and 12, Requirement 4 criteria 6 and 13, and Requirement 5 criterion 8.
+8. WHEN a mode change event is received, THE Switch_Input SHALL keep the Timing_Settings, the Calibrated_Flag, the Calibrated_Dash_Limit, and the Recent_Presses unchanged, SHALL set the Pending_Pattern to length 0, SHALL drop all Held_Switches, SHALL clear the Last_Counted_Release, SHALL return no Finished_Pattern, and SHALL return the Recalibration_Flag as false.
+9. IF an Input_Event names a Switch_Id that does not belong to the current mode (`main` outside 1-switch mode, `dot` or `dash` in 1-switch mode, or `next` outside 3-switch mode), THEN THE Switch_Input SHALL return an Input_State deeply equal to the one passed in, with no Finished_Pattern and the Recalibration_Flag as false.
+10. IF a press start, press end, or time-passed event carries a timestamp that is not a finite number or is negative, THEN THE Switch_Input SHALL return an Input_State deeply equal to the one passed in, with no Finished_Pattern and the Recalibration_Flag as false, and SHALL NOT throw an error. A timestamp that is finite but earlier than a stored time is handled by Requirement 2 criteria 10 and 12, Requirement 4 criteria 6 and 13, and Requirement 5 criterion 8.
 11. THE Switch_Input SHALL export its functions and types by name from `src/core/morse/`, with no default exports.
+12. THE Switch_Input SHALL set the Recalibration_Flag to false for every event that is not a Counted_Press in 1-switch mode with the Calibrated_Flag true, and the Recalibration_Flag SHALL NOT change the Input_State and SHALL NOT stop or delay input.
 
 ### Requirement 10: Property-based tests
 
@@ -222,3 +243,5 @@ Assumptions:
 5. THE Switch_Input SHALL include a test that, for each of the 1-switch, 2-switch, and 3-switch input modes, passes a Finished_Pattern produced by Counted_Presses to `decodePattern` and checks that the decoded character or action equals the entry for that pattern in the Morse table.
 6. WHEN the tasks for this spec are written, THE task list SHALL mark every property-based test task as required, with no optional marker (no `*` suffix on the task).
 7. WHEN a source file in `src/core/morse/` is added or changed for this feature, THE change SHALL include the unit tests and property-based tests for that file in the same task, and `npm test` SHALL pass with zero failing tests after that task.
+8. THE Switch_Input SHALL include property-based tests, each naming Requirement 8 and its criterion number, that run random sequences of classified presses from a calibrated state and check that the Dash_Limit never moves away from the midpoint, never moves past the midpoint, changes by at most 5 percent per step, converges to the clamped target when the same Tap and Hold durations are repeated, stays inside the Drift_Band, stays at least 2 times the Minimum_Press, is always a whole number of milliseconds, and that the Taps window and the Holds window never hold more than 10 entries.
+9. THE Switch_Input SHALL include property-based tests that check: an Outlier_Press is classified as a dash, appends `-`, and is never stored in the Recent_Presses; no adaptive move happens while the Recent_Presses hold fewer than 3 Taps or fewer than 3 Holds; the Dash_Limit does not move when the Median recent Tap is not shorter than the Median recent Hold; calibration while any switch is held returns a failed result with the Timing_Settings, Calibrated_Flag, Calibrated_Dash_Limit, Recent_Presses, and Held_Switches unchanged; calibration seeding follows Requirement 7 criteria 5 and 14; and Requirement 1 clamping keeps the Minimum_Press at most half of the Dash_Limit and stays idempotent.
