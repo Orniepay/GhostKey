@@ -40,13 +40,15 @@ None of the special codes is used by a supported character. Never add a characte
 - If the finished pattern matches no character or special code, show it as invalid right away and offer an autocorrect suggestion. Never silently drop a pattern.
 
 ## Input modes
-- **1-switch (core):** press shorter than the user's dash limit = dot; longer = dash. A pause longer than the user's letter-gap limit ends the letter. Words end with the space code `..--`.
-- **2-switch:** one switch for dot, one for dash. A pause longer than the user's letter-gap limit ends the letter.
-- **3-switch:** dot switch, dash switch, and a next-letter switch that ends the letter. No timing is used.
+- **1-switch (core):** a press shorter than the user's dash limit is a dot; a press at or above it is a dash. A pause of at least the user's letter-gap limit ends the letter. Words end with the space code `..--`.
+- **2-switch:** one switch for dot, one for dash. Each switch adds its symbol once per press, when the press ends. A pause of at least the letter-gap limit ends the letter.
+- **3-switch:** dot switch, dash switch, and a next-letter switch that ends the letter. Each switch acts once per press, when the press ends. No letter timing is used.
+- In every mode, holding a key does not repeat the symbol: a press counts once, no matter how long it is held.
 
 ## Timing
-- Default dash limit: a press longer than 400 ms is a dash.
-- Default letter-gap limit: a pause longer than 1,500 ms ends the letter.
+- Default dash limit: a press of 400 ms or more is a dash.
+- Default letter-gap limit: a pause of 1,500 ms or more ends the letter.
+- Minimum press: a press shorter than 30 ms (adjustable) is ignored in every mode, so twitches and switch bounce add nothing.
 - These defaults are only used until calibration measures the user's own short press, long press, and pause.
 - After calibration, the limits keep adapting slowly to the user's recent presses (for example, when they get tired).
 - The user or caregiver can always adjust every limit by hand.
